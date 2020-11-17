@@ -106,7 +106,7 @@ typedef static_vector<PartLevel, 2 * MAX_CU_DEPTH + 1> PartitioningStack;
 
 class Partitioner
 {
-protected:
+public:
   PartitioningStack m_partStack;
 #if _DEBUG
   UnitArea          m_currArea;

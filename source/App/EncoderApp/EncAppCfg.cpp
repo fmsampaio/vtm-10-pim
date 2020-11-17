@@ -59,6 +59,9 @@
 using namespace std;
 namespace po = df::program_options_lite;
 
+int m_MaxCURDCheck;
+
+
 enum ExtendedProfileName   // this is used for determining profile strings, where multiple profiles map to a single
                            // profile idc with various constraint flag combinations
 {
@@ -777,7 +780,8 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("SummaryPicFilenameBase",                          m_summaryPicFilenameBase,                      string(), "Base filename to use for producing summary picture output files. The actual filenames used will have I.txt, P.txt and B.txt appended. If empty, do not produce a file.")
   ("SummaryVerboseness",                              m_summaryVerboseness,                                0u, "Specifies the level of the verboseness of the text output")
   ("Verbosity,v",                                     m_verbosity,                               (int)VERBOSE, "Specifies the level of the verboseness")
-
+  ("MaxCURDCheck,-maxcu",                             m_MaxCURDCheck,                                (int)128, "TODO")
+  
 #if JVET_O0756_CONFIG_HDRMETRICS || JVET_O0756_CALCULATE_HDRMETRICS
   ( "WhitePointDeltaE1",                              m_whitePointDeltaE[0],                            100.0, "1st reference white point value")
   ( "WhitePointDeltaE2",                              m_whitePointDeltaE[1],                           1000.0, "2nd reference white point value")

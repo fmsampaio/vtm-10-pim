@@ -693,6 +693,7 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
   }
   else
   {
+    
     int xFrac = mv.hor & ((1 << shiftHor) - 1);
     int yFrac = mv.ver & ((1 << shiftVer) - 1);
     if (isIBC)
@@ -700,6 +701,13 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
       xFrac = yFrac = 0;
       JVET_J0090_SET_CACHE_ENABLE(false);
     }
+
+/*
+    std::cout << pu.refIdx << " " << pu.Y().x << " " <<  pu.Y().y << " - ";
+    std::cout << "(" << mv.hor << " , " << mv.ver << ") ";
+    std::cout << "(" << shiftHor << " , " << shiftVer << ") ";
+    std::cout << "(" << xFrac << " , " << yFrac << ")\n";
+*/
 
     PelBuf & dstBuf = dstPic.bufs[compID];
     unsigned width  = dstBuf.width;

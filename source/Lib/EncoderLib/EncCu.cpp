@@ -53,7 +53,7 @@
 #include <cmath>
 #include <algorithm>
 
-
+extern int m_MaxCURDCheck;
 
 //! \ingroup EncoderLib
 //! \{
@@ -296,6 +296,14 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
   // init the partitioning manager
   QTBTPartitioner partitioner;
   partitioner.initCtu(area, CH_L, *cs.slice);
+
+  
+  //for(int i=0;i<partitioner.m_partStack.size();i++) {
+  //  std::cout << partitioner.m_partStack[i].parts.size() << " ";  
+  //}
+  //std::cout << std::endl << std::endl;
+  
+
   if (m_pcEncCfg->getIBCMode())
   {
     if (area.lx() == 0 && area.ly() == 0)
@@ -530,6 +538,10 @@ bool EncCu::xCheckBestMode( CodingStructure *&tempCS, CodingStructure *&bestCS, 
 void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Partitioner& partitioner, double maxCostAllowed )
 {
   CHECK(maxCostAllowed < 0, "Wrong value of maxCostAllowed!");
+
+  //debug felipe
+  //std::cout << "CU: " << partitioner.currArea().lwidth() << " " << partitioner.currArea().lwidth() << std::endl;
+
 #if ENABLE_SPLIT_PARALLELISM
   CHECK( m_dataId != tempCS->picture->scheduler.getDataId(), "Working in the wrong dataId!" );
 
@@ -723,34 +735,48 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
       }
     }
 #endif
-
-    if( currTestMode.type == ETM_INTER_ME )
+    //felipe opt
+    bool skipCheckRD = false;
+    if(partitioner.currArea().lwidth() > m_MaxCURDCheck || partitioner.currArea().lwidth() > m_MaxCURDCheck) 
+      skipCheckRD = true;
+    
+    if( currTestMode.type == ETM_INTER_ME)
     {
-      if( ( currTestMode.opts & ETO_IMV ) != 0 )
-      {
-        const bool skipAltHpelIF = ( int( ( currTestMode.opts & ETO_IMV ) >> ETO_IMV_SHIFT ) == 4 ) && ( bestIntPelCost > 1.25 * bestCS->cost );
-        if (!skipAltHpelIF)
+      if (!skipCheckRD) {
+        
+        if( ( currTestMode.opts & ETO_IMV ) != 0 )
+        {
+          const bool skipAltHpelIF = ( int( ( currTestMode.opts & ETO_IMV ) >> ETO_IMV_SHIFT ) == 4 ) && ( bestIntPelCost > 1.25 * bestCS->cost );
+          if (!skipAltHpelIF)
+          {
+            tempCS->bestCS = bestCS;
+            xCheckRDCostInterIMV(tempCS, bestCS, partitioner, currTestMode, bestIntPelCost);
+            tempCS->bestCS = nullptr;
+          }
+        }
+        else
         {
           tempCS->bestCS = bestCS;
-          xCheckRDCostInterIMV(tempCS, bestCS, partitioner, currTestMode, bestIntPelCost);
+          xCheckRDCostInter( tempCS, bestCS, partitioner, currTestMode );
           tempCS->bestCS = nullptr;
         }
-      }
-      else
-      {
-        tempCS->bestCS = bestCS;
-        xCheckRDCostInter( tempCS, bestCS, partitioner, currTestMode );
-        tempCS->bestCS = nullptr;
+
       }
 
     }
     else if (currTestMode.type == ETM_HASH_INTER)
     {
-      xCheckRDCostHashInter( tempCS, bestCS, partitioner, currTestMode );
+      if( !skipCheckRD )
+      {
+        xCheckRDCostHashInter( tempCS, bestCS, partitioner, currTestMode );
+      }
     }
     else if( currTestMode.type == ETM_AFFINE )
     {
-      xCheckRDCostAffineMerge2Nx2N( tempCS, bestCS, partitioner, currTestMode );
+      if( !skipCheckRD )
+      {
+        xCheckRDCostAffineMerge2Nx2N( tempCS, bestCS, partitioner, currTestMode );
+      }
     }
 #if REUSE_CU_RESULTS
     else if( currTestMode.type == ETM_RECO_CACHED )
@@ -769,41 +795,43 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
     {
       xCheckRDCostMergeGeo2Nx2N( tempCS, bestCS, partitioner, currTestMode );
     }
-    else if( currTestMode.type == ETM_INTRA )
+    else if( currTestMode.type == ETM_INTRA)
     {
-      if (slice.getSPS()->getUseColorTrans() && !CS::isDualITree(*tempCS))
-      {
-        bool skipSecColorSpace = false;
-        skipSecColorSpace = xCheckRDCostIntra(tempCS, bestCS, partitioner, currTestMode, (m_pcEncCfg->getRGBFormatFlag() ? true : false));
-        if ((m_pcEncCfg->getCostMode() == COST_LOSSLESS_CODING && slice.isLossless()) && !m_pcEncCfg->getRGBFormatFlag())
+        if (slice.getSPS()->getUseColorTrans() && !CS::isDualITree(*tempCS))
         {
-          skipSecColorSpace = true;
-        }
-        if (!skipSecColorSpace && !tempCS->firstColorSpaceTestOnly)
-        {
-          xCheckRDCostIntra(tempCS, bestCS, partitioner, currTestMode, (m_pcEncCfg->getRGBFormatFlag() ? false : true));
-        }
-
-        if (!tempCS->firstColorSpaceTestOnly)
-        {
-          if (tempCS->tmpColorSpaceIntraCost[0] != MAX_DOUBLE && tempCS->tmpColorSpaceIntraCost[1] != MAX_DOUBLE)
+          bool skipSecColorSpace = false;
+          skipSecColorSpace = xCheckRDCostIntra(tempCS, bestCS, partitioner, currTestMode, (m_pcEncCfg->getRGBFormatFlag() ? true : false));
+          if ((m_pcEncCfg->getCostMode() == COST_LOSSLESS_CODING && slice.isLossless()) && !m_pcEncCfg->getRGBFormatFlag())
           {
-            double skipCostRatio = m_pcEncCfg->getRGBFormatFlag() ? 1.1 : 1.0;
-            if (tempCS->tmpColorSpaceIntraCost[1] > (skipCostRatio*tempCS->tmpColorSpaceIntraCost[0]))
+            skipSecColorSpace = true;
+          }
+          if (!skipSecColorSpace && !tempCS->firstColorSpaceTestOnly)
+          {
+            xCheckRDCostIntra(tempCS, bestCS, partitioner, currTestMode, (m_pcEncCfg->getRGBFormatFlag() ? false : true));
+          }
+
+          if (!tempCS->firstColorSpaceTestOnly)
+          {
+            if (tempCS->tmpColorSpaceIntraCost[0] != MAX_DOUBLE && tempCS->tmpColorSpaceIntraCost[1] != MAX_DOUBLE)
             {
-              tempCS->firstColorSpaceTestOnly = bestCS->firstColorSpaceTestOnly = true;
+              double skipCostRatio = m_pcEncCfg->getRGBFormatFlag() ? 1.1 : 1.0;
+              if (tempCS->tmpColorSpaceIntraCost[1] > (skipCostRatio*tempCS->tmpColorSpaceIntraCost[0]))
+              {
+                tempCS->firstColorSpaceTestOnly = bestCS->firstColorSpaceTestOnly = true;
+              }
             }
+          }
+          else
+          {
+            CHECK(tempCS->tmpColorSpaceIntraCost[1] != MAX_DOUBLE, "the RD test of the second color space should be skipped");
           }
         }
         else
         {
-          CHECK(tempCS->tmpColorSpaceIntraCost[1] != MAX_DOUBLE, "the RD test of the second color space should be skipped");
+          xCheckRDCostIntra(tempCS, bestCS, partitioner, currTestMode, false); 
         }
-      }
-      else
-      {
-        xCheckRDCostIntra(tempCS, bestCS, partitioner, currTestMode, false);
-      }
+      
+      
     }
     else if (currTestMode.type == ETM_PALETTE)
     {
@@ -896,6 +924,7 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
     {
       THROW( "Don't know how to handle mode: type = " << currTestMode.type << ", options = " << currTestMode.opts );
     }
+      
   } while( m_modeCtrl->nextMode( *tempCS, partitioner ) );
 
 
@@ -1280,6 +1309,13 @@ void EncCu::xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, 
 
 
   partitioner.splitCurrArea( split, *tempCS );
+
+  //debug felipe
+  //for(int i=0;i<partitioner.m_partStack.size();i++) {
+  //  std::cout << partitioner.m_partStack[i].parts.size() << " ";  
+  //}
+  //std::cout << std::endl;
+
   bool qgEnableChildren = partitioner.currQgEnable(); // QG possible at children level
 
   m_CurrCtx++;
@@ -1587,6 +1623,8 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
   const  CodingUnit *bestCU      = bestCS->getCU( partitioner.chType );
   Distortion interHad = m_modeCtrl->getInterHad();
 
+  //debug felipe
+  //std::cout << "INTRA: " << partitioner.currArea().lwidth() << " " << partitioner.currArea().lheight() << std::endl;
 
   double dct2Cost                =   MAX_DOUBLE;
   double bestNonDCT2Cost         = MAX_DOUBLE;
@@ -3708,7 +3746,8 @@ void EncCu::xCheckRDCostIBCMode(CodingStructure *&tempCS, CodingStructure *&best
 void EncCu::xCheckRDCostInter( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &partitioner, const EncTestMode& encTestMode )
 {
   tempCS->initStructData( encTestMode.qp );
-
+  //debug felipe
+  //std::cout << "INTER: " << partitioner.currArea().lwidth() << " " << partitioner.currArea().lheight() << std::endl;
 
   m_pcInterSearch->setAffineModeSelected(false);
 
