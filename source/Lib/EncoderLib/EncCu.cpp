@@ -686,7 +686,22 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
     }
   }
 
-  do
+  // Felipe: cálculo da variância
+  if(tempCS->slice->getSliceType() != I_SLICE) { //melhorar isso
+    
+    //int refPoc = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getPOC();
+    PelUnitBuf recoBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getRecoBuf(PIC_RECONSTRUCTION);
+    PelUnitBuf origBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getOrigBuf();
+
+    cout << "OUT (" << partitioner.currArea().lx() << "," << partitioner.currArea().ly() << ")" ;
+    cout << " W:" << partitioner.currArea().lwidth() << " H:" << partitioner.currArea().lheight();
+    //cout << " RefPOC: " << refPoc << endl;
+    cout << "Orig. Sample: " << origBuff.Y().at(0,0) << " Reco. Sample: " << recoBuff.Y().at(0,0) << endl; //posições relativas ao quadro
+    
+  }
+
+
+  do //Felipe: laço que itera sobre todos os modos de predição possíveis para uma determinada CU
   {
     for (int i = compBegin; i < (compBegin + numComp); i++)
     {
@@ -737,6 +752,20 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
 #endif
     //felipe opt
     bool skipCheckRD = false;
+    
+    if(currTestMode.type == ETM_INTER_ME || currTestMode.type == ETM_HASH_INTER || currTestMode.type == ETM_AFFINE) {
+      
+      int refPoc = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getPOC();
+      //PelUnitBuf recoBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getRecoBuf(PIC_RECONSTRUCTION);
+      //PelUnitBuf origBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getOrigBuf();
+
+      cout << "IN (" << partitioner.currArea().lx() << "," << partitioner.currArea().ly() << ")" ;
+      cout << " W:" << partitioner.currArea().lwidth() << " H:" << partitioner.currArea().lheight();
+      cout << " RefPOC: " << refPoc << endl;
+      //cout << "Orig. Sample: " << origBuff.Y().at(0,0) << " Reco. Sample: " << recoBuff.Y().at(0,0) << endl;
+
+    }
+
     if(partitioner.currArea().lwidth() > m_MaxCURDCheck || partitioner.currArea().lwidth() > m_MaxCURDCheck) 
       skipCheckRD = true;
     
