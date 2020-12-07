@@ -688,16 +688,47 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
 
   // Felipe: cálculo da variância
   if(tempCS->slice->getSliceType() != I_SLICE) { //melhorar isso
+    // Arthur: Variância
+    int sum = 0;
     
     //int refPoc = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getPOC();
     PelUnitBuf recoBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getRecoBuf(PIC_RECONSTRUCTION);
     PelUnitBuf origBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getOrigBuf();
 
     cout << "OUT (" << partitioner.currArea().lx() << "," << partitioner.currArea().ly() << ")" ;
-    cout << " W:" << partitioner.currArea().lwidth() << " H:" << partitioner.currArea().lheight();
-    //cout << " RefPOC: " << refPoc << endl;
-    cout << "Orig. Sample: " << origBuff.Y().at(0,0) << " Reco. Sample: " << recoBuff.Y().at(0,0) << endl; //posições relativas ao quadro
+    cout << " W:" << partitioner.currArea().lwidth() << " H:" << partitioner.currArea().lheight() << endl;
+    // cout << " RefPOC: " << refPoc << endl;
+    // cout << "Orig. Sample: " << origBuff.Y().at(0,0) << " Reco. Sample: " << recoBuff.Y().at(0,0) << endl; //posições relativas ao quadro
     
+    int startx = partitioner.currArea().lx();
+    int endx = partitioner.currArea().lx() + partitioner.currArea().lwidth();
+    int starty = partitioner.currArea().ly();
+    int endy = partitioner.currArea().ly() + partitioner.currArea().lheight();
+
+    for (int i = startx; i < endx; i++) {
+      for (int j = starty; j < endy; j++) {
+        sum += abs(origBuff.Y().at(i,j) - recoBuff.Y().at(i,j));
+      }
+    }
+
+    double mean = (double)sum / 
+                  (double) (partitioner.currArea().lwidth() * 
+                            partitioner.currArea().lheight());
+
+    double sqDiff = 0;
+
+    for (int i = startx; i < endx; i++) {
+      for (int j = starty; j < endy; j++) {
+        sqDiff += ((origBuff.Y().at(i,j) - recoBuff.Y().at(i,j)) - mean) *
+                  ((origBuff.Y().at(i,j) - recoBuff.Y().at(i,j)) - mean);
+      }
+    }
+
+    double variance = (double) sqDiff / 
+                      (double) (partitioner.currArea().lwidth() * 
+                                partitioner.currArea().lheight());
+    
+    cout << "Variance: " << variance << '\n';
   }
 
 
@@ -753,18 +784,18 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
     //felipe opt
     bool skipCheckRD = false;
     
-    if(currTestMode.type == ETM_INTER_ME || currTestMode.type == ETM_HASH_INTER || currTestMode.type == ETM_AFFINE) {
+    // if(currTestMode.type == ETM_INTER_ME || currTestMode.type == ETM_HASH_INTER || currTestMode.type == ETM_AFFINE) {
       
-      int refPoc = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getPOC();
+      // int refPoc = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getPOC();
       //PelUnitBuf recoBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getRecoBuf(PIC_RECONSTRUCTION);
       //PelUnitBuf origBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getOrigBuf();
 
-      cout << "IN (" << partitioner.currArea().lx() << "," << partitioner.currArea().ly() << ")" ;
-      cout << " W:" << partitioner.currArea().lwidth() << " H:" << partitioner.currArea().lheight();
-      cout << " RefPOC: " << refPoc << endl;
+      // cout << "IN (" << partitioner.currArea().lx() << "," << partitioner.currArea().ly() << ")" ;
+      // cout << " W:" << partitioner.currArea().lwidth() << " H:" << partitioner.currArea().lheight();
+      // cout << " RefPOC: " << refPoc << endl;
       //cout << "Orig. Sample: " << origBuff.Y().at(0,0) << " Reco. Sample: " << recoBuff.Y().at(0,0) << endl;
 
-    }
+    // }
 
     if(partitioner.currArea().lwidth() > m_MaxCURDCheck || partitioner.currArea().lwidth() > m_MaxCURDCheck) 
       skipCheckRD = true;
