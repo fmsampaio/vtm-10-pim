@@ -60,7 +60,8 @@ using namespace std;
 namespace po = df::program_options_lite;
 
 int m_MaxCURDCheck;
-
+// Arthur - Define constants
+double INTER_DURATION = 0;
 
 enum ExtendedProfileName   // this is used for determining profile strings, where multiple profiles map to a single
                            // profile idc with various constraint flag combinations

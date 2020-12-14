@@ -44,6 +44,9 @@
 #include "EncApp.h"
 #include "Utilities/program_options_lite.h"
 
+// Arthur - Import constant
+extern double INTER_DURATION;
+
 //! \ingroup EncoderApp
 //! \{
 
@@ -336,6 +339,8 @@ int main(int argc, char* argv[])
          (endClock - startClock) * 1.0 / CLOCKS_PER_SEC,
          encTime / 1000.0);
 #endif
+  // Arthur - Print Inter-Prediction time
+  printf(" Inter Prediction Time: %12.3f sec.\n\n", (INTER_DURATION / 1E+06));
 
   return 0;
 }
