@@ -57,6 +57,11 @@
 #include <chrono>
 extern int m_MaxCURDCheck;
 extern double INTER_DURATION;
+extern int threshold_128;
+extern int threshold_64;
+extern int threshold_32;
+extern int threshold_16;
+ 
 
 //! \ingroup EncoderLib
 //! \{
@@ -689,64 +694,85 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
     }
   }
 
+  bool skipCheckRD = false;
+
   // Felipe: cálculo da variância
-  // if(tempCS->slice->getSliceType() != I_SLICE && partitioner.currArea().lwidth() == partitioner.currArea().lheight()) { //melhorar isso
-  //   // Arthur: Variância
-  //   int sum = 0;
+  if(tempCS->slice->getSliceType() != I_SLICE && 
+    partitioner.currArea().lwidth() == partitioner.currArea().lheight() &&
+    partitioner.currArea().lwidth() != 8 &&
+    partitioner.currArea().lwidth() != 4) { //melhorar isso
+    // Arthur: Variância
+    int sum = 0;
 
-  //   // Original frame
-  //   // PelUnitBuf recoBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getOrigBuf();
+    // Original frame
+    // PelUnitBuf recoBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getOrigBuf();
     
-  //   // Reconstructed frame
-  //   PelUnitBuf recoBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getRecoBuf(PIC_RECONSTRUCTION);
-  //   PelUnitBuf origBuff = tempCS->slice->getPic()->getOrigBuf();
+    // Reconstructed frame
+    PelUnitBuf recoBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getRecoBuf(PIC_RECONSTRUCTION);
+    PelUnitBuf origBuff = tempCS->slice->getPic()->getOrigBuf();
 
-  //   cout << "OUT (" << partitioner.currArea().lx() << "," << partitioner.currArea().ly() << ")"  << endl;
+    // cout << "OUT (" << partitioner.currArea().lx() << "," << partitioner.currArea().ly() << ")"  << endl;
     
-  //   int width = tempCS->slice->getPic()->lwidth();
-  //   int height = tempCS->slice->getPic()->lheight();
-  //   double size = partitioner.currArea().lwidth() * partitioner.currArea().lheight()
+    int width = tempCS->slice->getPic()->lwidth();
+    int height = tempCS->slice->getPic()->lheight();
+    double size = partitioner.currArea().lwidth() * partitioner.currArea().lheight();
 
-  //   int startx = partitioner.currArea().lx();
-  //   int endx = partitioner.currArea().lx() + partitioner.currArea().lwidth();
-  //   if (endx > width) endx = width;
+    int startx = partitioner.currArea().lx();
+    int endx = partitioner.currArea().lx() + partitioner.currArea().lwidth();
+    if (endx > width) endx = width;
     
-  //   int starty = partitioner.currArea().ly();
-  //   int endy = partitioner.currArea().ly() + partitioner.currArea().lheight();
-  //   if (endy > height) endy = height;
+    int starty = partitioner.currArea().ly();
+    int endy = partitioner.currArea().ly() + partitioner.currArea().lheight();
+    if (endy > height) endy = height;
 
-  //   // Calculate the mean of the difference between frames
-  //   for (int i = startx; i < endx; i++) {
-  //     for (int j = starty; j < endy; j++) {
-  //       sum +=  origBuff.Y().at(i,j) >=  recoBuff.Y().at(i,j) 
-  //                 ? origBuff.Y().at(i,j) - recoBuff.Y().at(i,j)
-  //                 : recoBuff.Y().at(i,j) - origBuff.Y().at(i,j);
-  //     }
-  //   }
+    // Calculate the mean of the difference between frames
+    for (int i = startx; i < endx; i++) {
+      for (int j = starty; j < endy; j++) {
+        sum +=  origBuff.Y().at(i,j) >=  recoBuff.Y().at(i,j) 
+                  ? origBuff.Y().at(i,j) - recoBuff.Y().at(i,j)
+                  : recoBuff.Y().at(i,j) - origBuff.Y().at(i,j);
+      }
+    }
 
-  //   double mean = (double) sum / 
-  //                 (double) size;
+    double mean = (double) sum / 
+                  (double) size;
 
-  //   // Calculate the variance
-  //   double sqDiff = 0;
+    // Calculate the variance
+    double sqDiff = 0;
 
-  //   for (int i = startx; i < endx; i++) {
-  //     for (int j = starty; j < endy; j++) {
-  //       int difference = origBuff.Y().at(i,j) >=  recoBuff.Y().at(i,j) 
-  //                         ? origBuff.Y().at(i,j) - recoBuff.Y().at(i,j)
-  //                         : recoBuff.Y().at(i,j) - origBuff.Y().at(i,j);
+    for (int i = startx; i < endx; i++) {
+      for (int j = starty; j < endy; j++) {
+        int difference = origBuff.Y().at(i,j) >=  recoBuff.Y().at(i,j) 
+                          ? origBuff.Y().at(i,j) - recoBuff.Y().at(i,j)
+                          : recoBuff.Y().at(i,j) - origBuff.Y().at(i,j);
 
 
-  //       sqDiff += (difference - mean) * (difference - mean);
-  //     }
-  //   }
+        sqDiff += (difference - mean) * (difference - mean);
+      }
+    }
 
-  //   double variance = (double) sqDiff / 
-  //                     (double) size;
+    double variance = (double) sqDiff / 
+                      (double) size;
     
-  //   cout << "Variance: " << variance << '\n';
-  //   // Switch case to add variance to variance array Arthur
-  // }
+    // cout << "Variance: " << variance << '\n';
+    // Switch case to add variance to variance array Arthur
+    switch(partitioner.currArea().lwidth()) {
+      case 128:
+        if (threshold_128 && variance > threshold_128) skipCheckRD = true;
+        break;
+      case 64:
+        if (threshold_64 && variance > threshold_64) skipCheckRD = true;
+        break;
+      case 32:
+        if (threshold_32 && variance > threshold_32) skipCheckRD = true;
+        break;
+      case 16:
+        if (threshold_16 && variance > threshold_16) skipCheckRD = true;
+        break;
+      default:
+        cout << "Invalid block size: " << partitioner.currArea().lwidth() << '\n';
+    }
+  }
 
 
   do //Felipe: laço que itera sobre todos os modos de predição possíveis para uma determinada CU
@@ -799,7 +825,7 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
     }
 #endif
     //felipe opt
-    bool skipCheckRD = false;
+    // bool skipCheckRD = false;
     
     // if(currTestMode.type == ETM_INTER_ME || currTestMode.type == ETM_HASH_INTER || currTestMode.type == ETM_AFFINE) {
       
