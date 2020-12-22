@@ -46,10 +46,10 @@
 
 // Arthur - Import constant
 extern double INTER_DURATION;
-extern float threshold_128;
-extern float threshold_64;
-extern float threshold_32;
-extern float threshold_16;
+extern double threshold_128;
+extern double threshold_64;
+extern double threshold_32;
+extern double threshold_16;
 
 //! \ingroup EncoderApp
 //! \{
@@ -231,6 +231,12 @@ int main(int argc, char* argv[])
 #if PRINT_MACRO_VALUES
   printMacroSettings();
 #endif
+
+  fprintf( stdout, " TH128: %.4f\n", threshold_128);
+  fprintf( stdout, " TH64:  %.4f\n", threshold_64);
+  fprintf( stdout, " TH32:  %.4f\n", threshold_32);
+  fprintf( stdout, " TH16:  %.4f\n\n", threshold_16);
+
   // starting time
   auto startTime  = std::chrono::steady_clock::now();
   std::time_t startTime2 = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -344,11 +350,6 @@ int main(int argc, char* argv[])
 #endif
   // Arthur - Print Inter-Prediction time
   printf(" Inter Prediction Time: %12.3f sec.\n\n", (INTER_DURATION / 1E+06));
-
-  fprintf( stdout, "TH128: %.4f\n", threshold_128);
-  fprintf( stdout, "TH64:  %.4f\n", threshold_64);
-  fprintf( stdout, "TH32:  %.4f\n", threshold_32);
-  fprintf( stdout, "TH16:  %.4f\n", threshold_16);
 
   return 0;
 }
