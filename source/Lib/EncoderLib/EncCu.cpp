@@ -57,10 +57,10 @@
 #include <chrono>
 extern int m_MaxCURDCheck;
 extern double INTER_DURATION;
-extern int threshold_128;
-extern int threshold_64;
-extern int threshold_32;
-extern int threshold_16;
+extern double threshold_128;
+extern double threshold_64;
+extern double threshold_32;
+extern double threshold_16;
  
 
 //! \ingroup EncoderLib
