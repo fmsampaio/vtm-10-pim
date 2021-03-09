@@ -46,10 +46,10 @@
 
 // Arthur - Import constant
 extern double INTER_DURATION;
-extern double threshold_128;
-extern double threshold_64;
-extern double threshold_32;
-extern double threshold_16;
+// extern double threshold_128;
+// extern double threshold_64;
+// extern double threshold_32;
+// extern double threshold_16;
 
 //! \ingroup EncoderApp
 //! \{
@@ -232,10 +232,10 @@ int main(int argc, char* argv[])
   printMacroSettings();
 #endif
 
-  fprintf( stdout, " TH128: %.4f\n", threshold_128);
-  fprintf( stdout, " TH64:  %.4f\n", threshold_64);
-  fprintf( stdout, " TH32:  %.4f\n", threshold_32);
-  fprintf( stdout, " TH16:  %.4f\n\n", threshold_16);
+  // fprintf( stdout, " TH128: %.4f\n", threshold_128);
+  // fprintf( stdout, " TH64:  %.4f\n", threshold_64);
+  // fprintf( stdout, " TH32:  %.4f\n", threshold_32);
+  // fprintf( stdout, " TH16:  %.4f\n\n", threshold_16);
 
   // starting time
   auto startTime  = std::chrono::steady_clock::now();

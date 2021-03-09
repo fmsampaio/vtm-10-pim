@@ -57,10 +57,10 @@
 #include <chrono>
 extern int m_MaxCURDCheck;
 extern double INTER_DURATION;
-extern double threshold_128;
-extern double threshold_64;
-extern double threshold_32;
-extern double threshold_16;
+// extern double threshold_128;
+// extern double threshold_64;
+// extern double threshold_32;
+// extern double threshold_16;
  
 
 //! \ingroup EncoderLib
@@ -383,6 +383,25 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
   m_CABACEstimator->getCtx() = m_CurrCtx->start;
   m_CurrCtx                  = 0;
 
+  //Felipe: aqui já se tem a configuração final da CTU
+
+  std::cout << "Channel: " << partitioner.chType << endl;
+
+  // Primeiro quadro só acessa canal Chroma
+  // if (partitioner.chType == CH_L) {
+    // Itera sobre as CUs da CTU
+    for( const CodingUnit &cu : cs.traverseCUs( CS::getArea( cs, area, CH_L ), CH_L ) ) {
+      // if (bestCS.lx() % 128 == 0 && bestCS.ly() % 128 == 0) {
+      // Imprime informacoes sobre os blocos da CTU
+      std::cout << "X: " << cu.lx() << " " 
+                << "Y: " << cu.ly() << " " 
+                << "Height: " << cu.lheight() << " "
+                << "Width: " << cu.lwidth() << " "
+                << "Depth: " << cu.qtDepth << endl;  // Nao imprime nada  
+      // }  
+    }
+    std::cout << endl;
+  // }
 
   // Ensure that a coding was found
   // Selected mode's RD-cost must be not MAX_DOUBLE.
@@ -751,23 +770,51 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
       }
     }
 
-    double variance = (double) sqDiff / 
+    double diffVariance = (double) sqDiff / 
                       (double) size;
+
+    int QP = this->getEncCfg()->getBaseQP();
+    // cout << "QP " << QP << endl;
     
     // cout << "Variance: " << variance << '\n';
     // Switch case to add variance to variance array Arthur
     switch(partitioner.currArea().lwidth()) {
       case 128:
-        if (threshold_128 && variance > threshold_128) skipCheckRD = true;
+        // if (threshold_128 && variance > threshold_128) 
+        if (diffVariance > QP) 
+
+        // Decision Tree
+        // if previousSplit <= 0.5 {
+        //     if QP <= 24.5 {
+        //         skipCheckRD = false;
+        //     } else {  // if QP > 24.5
+        //         skipCheckRD = true;
+        //     }
+        // } else {  // if previousSplit > 0.5
+        //     if diffVariance <= 405.6545 {
+        //         if QP <= 24.5 {
+        //             skipCheckRD = false;
+        //         } else {  // if QP > 24.5
+        //             skipCheckRD = true;
+        //         }
+        //     } else {  // if diffVariance > 405.6545
+        //         skipCheckRD = false;
+        //     }
+        // }
+
+        // skipCheckRD = true;
         break;
       case 64:
-        if (threshold_64 && variance > threshold_64) skipCheckRD = true;
+        // if (threshold_64 && variance > threshold_64) 
+        // skipCheckRD = true;
         break;
       case 32:
-        if (threshold_32 && variance > threshold_32) skipCheckRD = true;
+        // if (threshold_32 && variance > threshold_32) 
+        // skipCheckRD = true;
         break;
       case 16:
-        if (threshold_16 && variance > threshold_16) skipCheckRD = true;
+        // if (threshold_16 && variance > threshold_16) 
+        // skipCheckRD = true;
         break;
       default:
         cout << "Invalid block size: " << partitioner.currArea().lwidth() << '\n';

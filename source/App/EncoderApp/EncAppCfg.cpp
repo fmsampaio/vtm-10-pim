@@ -62,10 +62,10 @@ namespace po = df::program_options_lite;
 int m_MaxCURDCheck;
 // Arthur - Define constants
 double INTER_DURATION = 0;
-double threshold_128;
-double threshold_64;
-double threshold_32;
-double threshold_16;
+// double threshold_128;
+// double threshold_64;
+// double threshold_32;
+// double threshold_16;
 
 enum ExtendedProfileName   // this is used for determining profile strings, where multiple profiles map to a single
                            // profile idc with various constraint flag combinations
@@ -735,10 +735,10 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("SIMD",                                            ignore,                                      string(""), "SIMD extension to use (SCALAR, SSE41, SSE42, AVX, AVX2, AVX512), default: the highest supported extension\n")
 #endif
   // Arthur - Add CL parameters
-  ("Threshold128,-th128",                              threshold_128,                           ( double ) 0.0, "Variance threshold to split 128x128 blocks")
-  ("Threshold64,-th64",                                threshold_64,                            ( double ) 0.0, "Variance threshold to split 64x64 blocks")
-  ("Threshold32,-th32",                                threshold_32,                            ( double ) 0.0, "Variance threshold to split 32x32 blocks")
-  ("Threshold16,-th16",                                threshold_16,                            ( double ) 0.0, "Variance threshold to split 16x16 blocks")
+  // ("Threshold128,-th128",                              threshold_128,                           ( double ) 0.0, "Variance threshold to split 128x128 blocks")
+  // ("Threshold64,-th64",                                threshold_64,                            ( double ) 0.0, "Variance threshold to split 64x64 blocks")
+  // ("Threshold32,-th32",                                threshold_32,                            ( double ) 0.0, "Variance threshold to split 32x32 blocks")
+  // ("Threshold16,-th16",                                threshold_16,                            ( double ) 0.0, "Variance threshold to split 16x16 blocks")
   // File, I/O and source parameters
   ("InputFile,i",                                     m_inputFileName,                             string(""), "Original YUV input file name")
   ("InputPathPrefix,-ipp",                            inputPathPrefix,                             string(""), "pathname to prepend to input filename")
