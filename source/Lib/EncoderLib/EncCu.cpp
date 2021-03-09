@@ -385,24 +385,23 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 
   //Felipe: aqui já se tem a configuração final da CTU
 
-  std::cout << "Channel: " << partitioner.chType << endl;
-
+  
   // Primeiro quadro só acessa canal Chroma
-  // if (partitioner.chType == CH_L) {
-    // Itera sobre as CUs da CTU
-    for( const CodingUnit &cu : cs.traverseCUs( CS::getArea( cs, area, CH_L ), CH_L ) ) {
-      // if (bestCS.lx() % 128 == 0 && bestCS.ly() % 128 == 0) {
-      // Imprime informacoes sobre os blocos da CTU
-      std::cout << "X: " << cu.lx() << " " 
-                << "Y: " << cu.ly() << " " 
-                << "Height: " << cu.lheight() << " "
-                << "Width: " << cu.lwidth() << " "
-                << "Depth: " << cu.qtDepth << endl;  // Nao imprime nada  
-      // }  
-    }
-    std::cout << endl;
-  // }
-
+  const ChannelType chType = ChannelType( 0 );
+  std::cout << "Channel: " << chType << endl;
+  
+  for( const CodingUnit &cu : cs.traverseCUs( CS::getArea( cs, area, chType ), chType ) ) {
+    // if (bestCS.lx() % 128 == 0 && bestCS.ly() % 128 == 0) {
+    // Imprime informacoes sobre os blocos da CTU
+    std::cout << "X: " << cu.lx() << " " 
+              << "Y: " << cu.ly() << " " 
+              << "Height: " << cu.lheight() << " "
+              << "Width: " << cu.lwidth() << " "
+              << "Depth: " << (int) cu.qtDepth << endl;  // Nao imprime nada  
+    // }  
+  }
+  std::cout << endl;
+  
   // Ensure that a coding was found
   // Selected mode's RD-cost must be not MAX_DOUBLE.
   CHECK( bestCS->cus.empty()                                   , "No possible encoding found" );
