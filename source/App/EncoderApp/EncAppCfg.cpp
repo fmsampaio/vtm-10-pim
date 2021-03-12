@@ -61,6 +61,7 @@ namespace po = df::program_options_lite;
 
 int m_MaxCURDCheck;
 // Arthur - Define constants
+int ** splitMap;
 double INTER_DURATION = 0;
 // double threshold_128;
 // double threshold_64;
@@ -1666,6 +1667,13 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   m_inputFileHeight = m_iSourceHeight;
   m_ext360.setMaxCUInfo(m_uiCTUSize, 1 << MIN_CU_LOG2);
 #endif
+  // Arthur - Instantiate splitMap
+  splitMap = (int**)malloc(m_iSourceWidth * sizeof(int*));
+
+  for (int index = 0; index <= m_iSourceWidth; index++) {
+    splitMap[index] = (int*)malloc(m_iSourceHeight * sizeof(int));
+  }
+  // Arthur - End
 
   if (!inputPathPrefix.empty() && inputPathPrefix.back() != '/' && inputPathPrefix.back() != '\\' )
   {

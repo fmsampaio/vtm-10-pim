@@ -57,6 +57,7 @@
 #include <chrono>
 extern int m_MaxCURDCheck;
 extern double INTER_DURATION;
+extern int ** splitMap;
 // extern double threshold_128;
 // extern double threshold_64;
 // extern double threshold_32;
@@ -385,22 +386,59 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 
   //Felipe: aqui já se tem a configuração final da CTU
 
-  
   // Primeiro quadro só acessa canal Chroma
   const ChannelType chType = ChannelType( 0 );
-  std::cout << "Channel: " << chType << endl;
+  // std::cout << "Channel: " << chType << endl;
+  // Arthur - Fill split map
+  int width;
+  int height;
+  
+  int blockStartX;
+  int blockEndX;
+
+  int blockStartY;
+  int blockEndY;
+
+  int depth;
   
   for( const CodingUnit &cu : cs.traverseCUs( CS::getArea( cs, area, chType ), chType ) ) {
     // if (bestCS.lx() % 128 == 0 && bestCS.ly() % 128 == 0) {
     // Imprime informacoes sobre os blocos da CTU
-    std::cout << "X: " << cu.lx() << " " 
-              << "Y: " << cu.ly() << " " 
-              << "Height: " << cu.lheight() << " "
-              << "Width: " << cu.lwidth() << " "
-              << "Depth: " << (int) cu.qtDepth << endl;  // Nao imprime nada  
+    // std::cout << "X: " << cu.lx() << " " 
+    //           << "Y: " << cu.ly() << " " 
+    //           << "Height: " << cu.lheight() << " "
+    //           << "Width: " << cu.lwidth() << " "
+    //           << "Depth: " << (int) cu.qtDepth << endl; 
+    width = tempCS->slice->getPic()->lwidth();
+    height = tempCS->slice->getPic()->lheight();
+    
+    blockStartX = cu.lx();
+    blockEndX = blockStartX + cu.lwidth();
+
+    if (blockEndX > width) blockEndX = width;
+
+    blockStartY = cu.ly();
+    blockEndY = blockStartY + cu.lheight();
+
+    if (blockEndY > height) blockEndY = height;
+
+    depth = 128 / pow (2, ((int) cu.qtDepth));
+
+    // cout << "depth: " << depth 
+    //      << " startX: " << blockStartX
+    //      << " endX: " << blockEndX
+    //      << " startY: " << blockStartY
+    //      << " endY: " << blockEndX <<'\n';
+
+    for (int x = blockStartX; x < blockEndX; x++) {
+      for (int y = blockStartY; y < blockEndX; y++) {
+        splitMap[x][y] = depth;
+      }
+    }
     // }  
   }
-  std::cout << endl;
+  // std::cout << endl;
+  // Arthur - End
   
   // Ensure that a coding was found
   // Selected mode's RD-cost must be not MAX_DOUBLE.
@@ -715,12 +753,11 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
   bool skipCheckRD = false;
 
   // Felipe: cálculo da variância
-  if(tempCS->slice->getSliceType() != I_SLICE && 
-    partitioner.currArea().lwidth() == partitioner.currArea().lheight() &&
+  if(tempCS->slice->getSliceType() != I_SLICE &&  // Inter prediction
+    partitioner.currArea().lwidth() == partitioner.currArea().lheight() && // Quadtree
     partitioner.currArea().lwidth() != 8 &&
     partitioner.currArea().lwidth() != 4) { //melhorar isso
     // Arthur: Variância
-    int sum = 0;
 
     // Original frame
     // PelUnitBuf recoBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getOrigBuf();
@@ -733,15 +770,20 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
     
     int width = tempCS->slice->getPic()->lwidth();
     int height = tempCS->slice->getPic()->lheight();
-    double size = partitioner.currArea().lwidth() * partitioner.currArea().lheight();
+
+    int blockWidth = partitioner.currArea().lwidth();
+    int blockHeight = partitioner.currArea().lheight();
+    double size = blockWidth * blockHeight;
 
     int startx = partitioner.currArea().lx();
-    int endx = partitioner.currArea().lx() + partitioner.currArea().lwidth();
+    int endx = partitioner.currArea().lx() + blockWidth;
     if (endx > width) endx = width;
     
     int starty = partitioner.currArea().ly();
-    int endy = partitioner.currArea().ly() + partitioner.currArea().lheight();
+    int endy = partitioner.currArea().ly() + blockHeight;
     if (endy > height) endy = height;
+
+    int sum = 0;
 
     // Calculate the mean of the difference between frames
     for (int i = startx; i < endx; i++) {
@@ -774,46 +816,122 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
 
     int QP = this->getEncCfg()->getBaseQP();
     // cout << "QP " << QP << endl;
+    // Get previous split
+    int previousSplit = 0;
+
+    if (splitMap[startx][starty] < blockWidth) previousSplit = 1;
     
-    // cout << "Variance: " << variance << '\n';
+    // cout << "splitMap: " << splitMap[startx][starty] << " Width: " << blockWidth <<'\n';
     // Switch case to add variance to variance array Arthur
     switch(partitioner.currArea().lwidth()) {
       case 128:
         // if (threshold_128 && variance > threshold_128) 
-        if (diffVariance > QP) 
-
         // Decision Tree
-        // if previousSplit <= 0.5 {
-        //     if QP <= 24.5 {
-        //         skipCheckRD = false;
-        //     } else {  // if QP > 24.5
-        //         skipCheckRD = true;
-        //     }
-        // } else {  // if previousSplit > 0.5
-        //     if diffVariance <= 405.6545 {
-        //         if QP <= 24.5 {
-        //             skipCheckRD = false;
-        //         } else {  // if QP > 24.5
-        //             skipCheckRD = true;
-        //         }
-        //     } else {  // if diffVariance > 405.6545
-        //         skipCheckRD = false;
-        //     }
-        // }
-
+        if (previousSplit <= 0.5) {
+            if (QP <= 24.5) {
+                skipCheckRD = false;
+            } else {  // if QP > 24.5
+                skipCheckRD = true;
+            }
+        } else {  // if previousSplit > 0.5
+            if (diffVariance <= 405.6545) {
+                if (QP <= 24.5 ){
+                    skipCheckRD = false;
+                } else {  // if QP > 24.5
+                    skipCheckRD = true;
+                }
+            } else {  // if diffVariance > 405.6545
+                skipCheckRD = false;
+            }
+        }
         // skipCheckRD = true;
         break;
       case 64:
         // if (threshold_64 && variance > threshold_64) 
         // skipCheckRD = true;
+        if (previousSplit <= 0.5000) {
+            if (diffVariance <= 873.0467) {
+                skipCheckRD = true;
+            } else {  // if diffVariance > 873.0467
+                if (QP <= 24.5000) {
+                    skipCheckRD = false;
+                } else {  // if QP > 24.5000
+                    skipCheckRD = true;
+                }
+            }
+        } else {  // if previousSplit > 0.5000
+            skipCheckRD = false;
+        }
         break;
       case 32:
         // if (threshold_32 && variance > threshold_32) 
         // skipCheckRD = true;
+        if (diffVariance <= 1412.5151) {
+            if (previousSplit <= 0.5000) {
+                if (QP <= 24.5000) {
+                    if (diffVariance <= 349.2717) {
+                        skipCheckRD = true;
+                    } else {  // if diffVariance > 349.2717
+                        if (height <= 1620.0000) {
+                            skipCheckRD = false;
+                        } else {  // if height > 1620.0000
+                            skipCheckRD = true;
+                        }
+                    }
+                } else {  // if QP > 24.5000
+                    skipCheckRD = true;
+                }
+            } else {  // if previousSplit > 0.5000
+                skipCheckRD = false;
+            }
+        } else {  // if diffVariance > 1412.5151
+            if (previousSplit <= 0.5000) {
+                if (QP <= 29.5000) {
+                    if (height <= 1620.0000) {
+                        skipCheckRD = false;
+                    } else {  // if height > 1620.0000
+                        if (QP <= 24.5000) {
+                            skipCheckRD = false;
+                        } else {  // if QP > 24.5000
+                            skipCheckRD = true;
+                        }
+                    }
+                } else {  // if QP > 29.5000
+                    if (height <= 1620.0000) {
+                        if (QP <= 34.5000) {
+                            skipCheckRD = false;
+                        } else {  // if QP > 34.5000
+                            skipCheckRD = true;
+                        }
+                    } else {  // if height > 1620.0000
+                        skipCheckRD = true;
+                    }
+                }
+            } else {  // if previousSplit > 0.5000
+                skipCheckRD = false;
+            }
+        }
         break;
       case 16:
         // if (threshold_16 && variance > threshold_16) 
         // skipCheckRD = true;
+        if (diffVariance <= 1024.7241) {
+            skipCheckRD = true;
+        } else {  // if diffVariance > 1024.7241
+            if (height <= 1620.0000) {
+                if (QP <= 29.5000) {
+                    skipCheckRD = false;
+                } else {  // if QP > 29.5000
+                    skipCheckRD = true;
+                }
+            } else {  // if height > 1620.0000
+                if (QP <= 24.5000) {
+                    skipCheckRD = false;
+                } else {  // if QP > 24.5000
+                    skipCheckRD = true;
+                }
+            }
+        }
         break;
       default:
         cout << "Invalid block size: " << partitioner.currArea().lwidth() << '\n';
