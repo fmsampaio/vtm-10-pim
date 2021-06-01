@@ -57,15 +57,15 @@
 extern int m_MaxCURDCheck;
 extern double INTER_DURATION;
 extern int **splitMap;
-extern bool skipBlockSize;
+// extern bool skipBlockSize;
 // extern double threshold_128;
 // extern double threshold_64;
 // extern double threshold_32;
 // extern double threshold_16;
-extern int skipBlockXLimit;
-extern int skipBlockYLimit;
-extern int skipBlockWidth;
-extern int skipBlockHeight;
+// extern int skipBlockXLimit;
+// extern int skipBlockYLimit;
+// extern int skipBlockWidth;
+// extern int skipBlockHeight;
 
 //! \ingroup EncoderLib
 //! \{
@@ -765,29 +765,29 @@ void EncCu::xCompressCU(CodingStructure *&tempCS, CodingStructure *&bestCS, Part
   bool skipCheckRD = false;
   bool confidenceDT = false;
 
-  int width = tempCS->slice->getPic()->lwidth();
-  int height = tempCS->slice->getPic()->lheight();
+  // int width = tempCS->slice->getPic()->lwidth();
+  // int height = tempCS->slice->getPic()->lheight();
 
-  int blockWidth = partitioner.currArea().lwidth();
-  int blockHeight = partitioner.currArea().lheight();
+  // int blockWidth = partitioner.currArea().lwidth();
+  // int blockHeight = partitioner.currArea().lheight();
 
-  int startx = partitioner.currArea().lx();
-  int endx = partitioner.currArea().lx() + blockWidth;
-  if (endx > width)
-    endx = width;
+  // int startx = partitioner.currArea().lx();
+  // int endx = partitioner.currArea().lx() + blockWidth;
+  // if (endx > width)
+  //   endx = width;
 
-  int starty = partitioner.currArea().ly();
-  int endy = partitioner.currArea().ly() + blockHeight;
-  if (endy > height)
-    endy = height;
+  // int starty = partitioner.currArea().ly();
+  // int endy = partitioner.currArea().ly() + blockHeight;
+  // if (endy > height)
+  //   endy = height;
 
-  if ((endx > skipBlockXLimit) ||
-      (endy > skipBlockYLimit) ||
-      (blockWidth >= skipBlockWidth) ||
-      (blockHeight >= skipBlockHeight))
-  {
-    skipBlockSize = false;
-  }
+  // if ((endx > skipBlockXLimit) ||
+  //     (endy > skipBlockYLimit) ||
+  //     (blockWidth >= skipBlockWidth) ||
+  //     (blockHeight >= skipBlockHeight))
+  // {
+  //   skipBlockSize = false;
+  // }
 
   // Felipe: cálculo da variância
   if (tempCS->slice->getSliceType() != I_SLICE &&                            // Inter prediction
@@ -800,450 +800,466 @@ void EncCu::xCompressCU(CodingStructure *&tempCS, CodingStructure *&bestCS, Part
     // Original frame
     // PelUnitBuf recoBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getOrigBuf();
     // Reconstructed frame
-    if (!skipBlockSize)
+    int width = tempCS->slice->getPic()->lwidth();
+    int height = tempCS->slice->getPic()->lheight();
+
+    int blockWidth = partitioner.currArea().lwidth();
+    int blockHeight = partitioner.currArea().lheight();
+
+    int startx = partitioner.currArea().lx();
+    int endx = partitioner.currArea().lx() + blockWidth;
+    if (endx > width)
+      endx = width;
+
+    int starty = partitioner.currArea().ly();
+    int endy = partitioner.currArea().ly() + blockHeight;
+    if (endy > height)
+      endy = height;
+
+    // if (!skipBlockSize)
+    // {
+    PelUnitBuf recoBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getRecoBuf(PIC_RECONSTRUCTION);
+    PelUnitBuf origBuff = tempCS->slice->getPic()->getOrigBuf();
+
+    double size = blockWidth * blockHeight;
+
+    int sum = 0;
+
+    // Calculate the mean of the difference between frames
+    for (int i = startx; i < endx; i++)
     {
-      PelUnitBuf recoBuff = tempCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getRecoBuf(PIC_RECONSTRUCTION);
-      PelUnitBuf origBuff = tempCS->slice->getPic()->getOrigBuf();
-
-      double size = blockWidth * blockHeight;
-
-      int sum = 0;
-
-      // Calculate the mean of the difference between frames
-      for (int i = startx; i < endx; i++)
+      for (int j = starty; j < endy; j++)
       {
-        for (int j = starty; j < endy; j++)
-        {
-          sum += origBuff.Y().at(i, j) >= recoBuff.Y().at(i, j)
-                     ? origBuff.Y().at(i, j) - recoBuff.Y().at(i, j)
-                     : recoBuff.Y().at(i, j) - origBuff.Y().at(i, j);
-        }
+        sum += origBuff.Y().at(i, j) >= recoBuff.Y().at(i, j)
+                   ? origBuff.Y().at(i, j) - recoBuff.Y().at(i, j)
+                   : recoBuff.Y().at(i, j) - origBuff.Y().at(i, j);
       }
+    }
 
-      double mean = (double)sum /
-                    (double)size;
+    double mean = (double)sum /
+                  (double)size;
 
-      // Calculate the variance
-      double sqDiff = 0;
+    // Calculate the variance
+    double sqDiff = 0;
 
-      for (int i = startx; i < endx; i++)
+    for (int i = startx; i < endx; i++)
+    {
+      for (int j = starty; j < endy; j++)
       {
-        for (int j = starty; j < endy; j++)
-        {
-          int difference = origBuff.Y().at(i, j) >= recoBuff.Y().at(i, j)
-                               ? origBuff.Y().at(i, j) - recoBuff.Y().at(i, j)
-                               : recoBuff.Y().at(i, j) - origBuff.Y().at(i, j);
+        int difference = origBuff.Y().at(i, j) >= recoBuff.Y().at(i, j)
+                             ? origBuff.Y().at(i, j) - recoBuff.Y().at(i, j)
+                             : recoBuff.Y().at(i, j) - origBuff.Y().at(i, j);
 
-          sqDiff += (difference - mean) * (difference - mean);
-        }
+        sqDiff += (difference - mean) * (difference - mean);
       }
+    }
 
-      double diffVariance = (double)sqDiff /
-                            (double)size;
+    double diffVariance = (double)sqDiff /
+                          (double)size;
 
-      int QP = this->getEncCfg()->getBaseQP();
-      // cout << "QP " << QP << endl;
-      // Get previous split
-      int previousSplit = 0;
+    int QP = this->getEncCfg()->getBaseQP();
+    // cout << "QP " << QP << endl;
+    // Get previous split
+    int previousSplit = 0;
 
-      if (splitMap[startx][starty] < blockWidth)
-        previousSplit = 1;
+    if (splitMap[startx][starty] < blockWidth)
+      previousSplit = 1;
 
-      // cout << "splitMap: " << splitMap[startx][starty] << " Width: " << blockWidth <<'\n';
-      // Switch case to add variance to variance array Arthur
-      switch (partitioner.currArea().lwidth())
+    // cout << "splitMap: " << splitMap[startx][starty] << " Width: " << blockWidth <<'\n';
+    // Switch case to add variance to variance array Arthur
+    switch (partitioner.currArea().lwidth())
+    {
+    case 128:
+      if (previousSplit <= 0.5000)
       {
-      case 128:
-        if (previousSplit <= 0.5000)
+        if (QP <= 24.5000)
         {
-          if (QP <= 24.5000)
+          if (diffVariance <= 76.9618)
           {
-            if (diffVariance <= 76.9618)
-            {
-              skipCheckRD = true;
-              confidenceDT = true;
-            }
-            else
-            { // if diffVariance > 76.9618
-              skipCheckRD = false;
-              confidenceDT = false;
-            }
+            skipCheckRD = true;
+            confidenceDT = true;
           }
           else
-          { // if QP > 24.5000
-            if (diffVariance <= 606.2184)
-            {
-              skipCheckRD = true;
-              confidenceDT = true;
-            }
-            else
-            { // if diffVariance > 606.2184
-              skipCheckRD = true;
-              confidenceDT = false;
-            }
+          { // if diffVariance > 76.9618
+            skipCheckRD = false;
+            confidenceDT = false;
           }
         }
         else
-        { // if previousSplit > 0.5000
-          if (diffVariance <= 405.6545)
+        { // if QP > 24.5000
+          if (diffVariance <= 606.2184)
           {
-            if (QP <= 24.5000)
+            skipCheckRD = true;
+            confidenceDT = true;
+          }
+          else
+          { // if diffVariance > 606.2184
+            skipCheckRD = true;
+            confidenceDT = false;
+          }
+        }
+      }
+      else
+      { // if previousSplit > 0.5000
+        if (diffVariance <= 405.6545)
+        {
+          if (QP <= 24.5000)
+          {
+            skipCheckRD = false;
+            confidenceDT = false;
+          }
+          else
+          { // if QP > 24.5000
+            skipCheckRD = true;
+            confidenceDT = false;
+          }
+        }
+        else
+        { // if diffVariance > 405.6545
+          if (QP <= 29.5000)
+          {
+            skipCheckRD = false;
+            confidenceDT = true;
+          }
+          else
+          { // if QP > 29.5000
+            if (diffVariance <= 1889.8248)
             {
               skipCheckRD = false;
               confidenceDT = false;
             }
             else
-            { // if QP > 24.5000
-              skipCheckRD = true;
-              confidenceDT = false;
-            }
-          }
-          else
-          { // if diffVariance > 405.6545
-            if (QP <= 29.5000)
-            {
+            { // if diffVariance > 1889.8248
               skipCheckRD = false;
               confidenceDT = true;
             }
+          }
+        }
+      }
+
+      break;
+
+    case 64:
+      if (previousSplit <= 0.5000)
+      {
+        if (diffVariance <= 873.0467)
+        {
+          skipCheckRD = true;
+          confidenceDT = true;
+        }
+        else
+        { // if diffVariance > 873.0467
+          skipCheckRD = true;
+          confidenceDT = false;
+        }
+      }
+      else
+      { // if previousSplit > 0.5000
+        if (diffVariance <= 453.1761)
+        {
+          skipCheckRD = false;
+          confidenceDT = false;
+        }
+        else
+        { // if diffVariance > 453.1761
+          skipCheckRD = false;
+          confidenceDT = true;
+        }
+      }
+
+      break;
+
+    case 32:
+      if (diffVariance <= 1353.7682)
+      {
+        if (QP <= 24.5000)
+        {
+          if (diffVariance <= 343.9455)
+          {
+            if (diffVariance <= 118.3979)
+            {
+              if (previousSplit <= 0.5000)
+              {
+                skipCheckRD = true;
+                confidenceDT = true;
+              }
+              else
+              { // if previousSplit > 0.5000
+                skipCheckRD = false;
+                confidenceDT = false;
+              }
+            }
             else
-            { // if QP > 29.5000
-              if (diffVariance <= 1889.8248)
+            { // if diffVariance > 118.3979
+              if (previousSplit <= 0.5000)
+              {
+                skipCheckRD = true;
+                confidenceDT = false;
+              }
+              else
+              { // if previousSplit > 0.5000
+                skipCheckRD = false;
+                confidenceDT = false;
+              }
+            }
+          }
+          else
+          { // if diffVariance > 343.9455
+            if (previousSplit <= 0.5000)
+            {
+              if (height <= 1620.0000)
               {
                 skipCheckRD = false;
                 confidenceDT = false;
               }
               else
-              { // if diffVariance > 1889.8248
-                skipCheckRD = false;
-                confidenceDT = true;
-              }
-            }
-          }
-        }
-
-        break;
-
-      case 64:
-        if (previousSplit <= 0.5000)
-        {
-          if (diffVariance <= 873.0467)
-          {
-            skipCheckRD = true;
-            confidenceDT = true;
-          }
-          else
-          { // if diffVariance > 873.0467
-            skipCheckRD = true;
-            confidenceDT = false;
-          }
-        }
-        else
-        { // if previousSplit > 0.5000
-          if (diffVariance <= 453.1761)
-          {
-            skipCheckRD = false;
-            confidenceDT = false;
-          }
-          else
-          { // if diffVariance > 453.1761
-            skipCheckRD = false;
-            confidenceDT = true;
-          }
-        }
-
-        break;
-
-      case 32:
-        if (diffVariance <= 1353.7682)
-        {
-          if (QP <= 24.5000)
-          {
-            if (diffVariance <= 343.9455)
-            {
-              if (diffVariance <= 118.3979)
-              {
-                if (previousSplit <= 0.5000)
-                {
-                  skipCheckRD = true;
-                  confidenceDT = true;
-                }
-                else
-                { // if previousSplit > 0.5000
-                  skipCheckRD = false;
-                  confidenceDT = false;
-                }
-              }
-              else
-              { // if diffVariance > 118.3979
-                if (previousSplit <= 0.5000)
-                {
-                  skipCheckRD = true;
-                  confidenceDT = false;
-                }
-                else
-                { // if previousSplit > 0.5000
-                  skipCheckRD = false;
-                  confidenceDT = false;
-                }
-              }
-            }
-            else
-            { // if diffVariance > 343.9455
-              if (previousSplit <= 0.5000)
-              {
-                if (height <= 1620.0000)
-                {
-                  skipCheckRD = false;
-                  confidenceDT = false;
-                }
-                else
-                { // if height > 1620.0000
-                  skipCheckRD = true;
-                  confidenceDT = false;
-                }
-              }
-              else
-              { // if previousSplit > 0.5000
-                if (height <= 1620.0000)
-                {
-                  skipCheckRD = false;
-                  confidenceDT = false;
-                }
-                else
-                { // if height > 1620.0000
-                  skipCheckRD = false;
-                  confidenceDT = false;
-                }
-              }
-            }
-          }
-          else
-          { // if QP > 24.5000
-            if (height <= 1620.0000)
-            {
-              if (diffVariance <= 272.9908)
-              {
-                if (previousSplit <= 0.5000)
-                {
-                  skipCheckRD = true;
-                  confidenceDT = true;
-                }
-                else
-                { // if previousSplit > 0.5000
-                  skipCheckRD = false;
-                  confidenceDT = false;
-                }
-              }
-              else
-              { // if diffVariance > 272.9908
-                if (QP <= 29.5000)
-                {
-                  skipCheckRD = true;
-                  confidenceDT = false;
-                }
-                else
-                { // if QP > 29.5000
-                  skipCheckRD = true;
-                  confidenceDT = false;
-                }
-              }
-            }
-            else
-            { // if height > 1620.0000
-              if (diffVariance <= 622.0014)
-              {
-                if (diffVariance <= 258.8140)
-                {
-                  skipCheckRD = true;
-                  confidenceDT = true;
-                }
-                else
-                { // if diffVariance > 258.8140
-                  skipCheckRD = true;
-                  confidenceDT = true;
-                }
-              }
-              else
-              { // if diffVariance > 622.0014
-                if (QP <= 29.5000)
-                {
-                  skipCheckRD = true;
-                  confidenceDT = false;
-                }
-                else
-                { // if QP > 29.5000
-                  skipCheckRD = true;
-                  confidenceDT = true;
-                }
-              }
-            }
-          }
-        }
-        else
-        { // if diffVariance > 1353.7682
-          if (QP <= 29.5000)
-          {
-            if (previousSplit <= 0.5000)
-            {
-              if (height <= 1620.0000)
-              {
-                if (QP <= 24.5000)
-                {
-                  skipCheckRD = false;
-                  confidenceDT = false;
-                }
-                else
-                { // if QP > 24.5000
-                  skipCheckRD = false;
-                  confidenceDT = false;
-                }
-              }
-              else
               { // if height > 1620.0000
-                if (QP <= 24.5000)
-                {
-                  skipCheckRD = false;
-                  confidenceDT = false;
-                }
-                else
-                { // if QP > 24.5000
-                  skipCheckRD = true;
-                  confidenceDT = false;
-                }
+                skipCheckRD = true;
+                confidenceDT = false;
               }
             }
             else
             { // if previousSplit > 0.5000
               if (height <= 1620.0000)
               {
-                if (diffVariance <= 14378.3047)
-                {
-                  skipCheckRD = false;
-                  confidenceDT = true;
-                }
-                else
-                { // if diffVariance > 14378.3047
-                  skipCheckRD = false;
-                  confidenceDT = true;
-                }
+                skipCheckRD = false;
+                confidenceDT = false;
               }
               else
               { // if height > 1620.0000
-                if (QP <= 24.5000)
-                {
-                  skipCheckRD = false;
-                  confidenceDT = false;
-                }
-                else
-                { // if QP > 24.5000
-                  skipCheckRD = false;
-                  confidenceDT = false;
-                }
+                skipCheckRD = false;
+                confidenceDT = false;
+              }
+            }
+          }
+        }
+        else
+        { // if QP > 24.5000
+          if (height <= 1620.0000)
+          {
+            if (diffVariance <= 272.9908)
+            {
+              if (previousSplit <= 0.5000)
+              {
+                skipCheckRD = true;
+                confidenceDT = true;
+              }
+              else
+              { // if previousSplit > 0.5000
+                skipCheckRD = false;
+                confidenceDT = false;
+              }
+            }
+            else
+            { // if diffVariance > 272.9908
+              if (QP <= 29.5000)
+              {
+                skipCheckRD = true;
+                confidenceDT = false;
+              }
+              else
+              { // if QP > 29.5000
+                skipCheckRD = true;
+                confidenceDT = false;
               }
             }
           }
           else
-          { // if QP > 29.5000
-            if (height <= 1620.0000)
+          { // if height > 1620.0000
+            if (diffVariance <= 622.0014)
             {
-              if (diffVariance <= 8152.2620)
+              if (diffVariance <= 258.8140)
               {
-                if (QP <= 34.5000)
-                {
-                  skipCheckRD = true;
-                  confidenceDT = false;
-                }
-                else
-                { // if QP > 34.5000
-                  skipCheckRD = true;
-                  confidenceDT = false;
-                }
+                skipCheckRD = true;
+                confidenceDT = true;
               }
               else
-              { // if diffVariance > 8152.2620
-                if (QP <= 34.5000)
-                {
-                  skipCheckRD = false;
-                  confidenceDT = false;
-                }
-                else
-                { // if QP > 34.5000
-                  skipCheckRD = true;
-                  confidenceDT = false;
-                }
+              { // if diffVariance > 258.8140
+                skipCheckRD = true;
+                confidenceDT = true;
+              }
+            }
+            else
+            { // if diffVariance > 622.0014
+              if (QP <= 29.5000)
+              {
+                skipCheckRD = true;
+                confidenceDT = false;
+              }
+              else
+              { // if QP > 29.5000
+                skipCheckRD = true;
+                confidenceDT = true;
+              }
+            }
+          }
+        }
+      }
+      else
+      { // if diffVariance > 1353.7682
+        if (QP <= 29.5000)
+        {
+          if (previousSplit <= 0.5000)
+          {
+            if (height <= 1620.0000)
+            {
+              if (QP <= 24.5000)
+              {
+                skipCheckRD = false;
+                confidenceDT = false;
+              }
+              else
+              { // if QP > 24.5000
+                skipCheckRD = false;
+                confidenceDT = false;
               }
             }
             else
             { // if height > 1620.0000
-              if (QP <= 34.5000)
+              if (QP <= 24.5000)
               {
-                if (diffVariance <= 3179.7498)
-                {
-                  skipCheckRD = true;
-                  confidenceDT = true;
-                }
-                else
-                { // if diffVariance > 3179.7498
-                  skipCheckRD = true;
-                  confidenceDT = false;
-                }
+                skipCheckRD = false;
+                confidenceDT = false;
               }
               else
-              { // if QP > 34.5000
-                if (diffVariance <= 4342.8918)
-                {
-                  skipCheckRD = true;
-                  confidenceDT = true;
-                }
-                else
-                { // if diffVariance > 4342.8918
-                  skipCheckRD = true;
-                  confidenceDT = true;
-                }
+              { // if QP > 24.5000
+                skipCheckRD = true;
+                confidenceDT = false;
+              }
+            }
+          }
+          else
+          { // if previousSplit > 0.5000
+            if (height <= 1620.0000)
+            {
+              if (diffVariance <= 14378.3047)
+              {
+                skipCheckRD = false;
+                confidenceDT = true;
+              }
+              else
+              { // if diffVariance > 14378.3047
+                skipCheckRD = false;
+                confidenceDT = true;
+              }
+            }
+            else
+            { // if height > 1620.0000
+              if (QP <= 24.5000)
+              {
+                skipCheckRD = false;
+                confidenceDT = false;
+              }
+              else
+              { // if QP > 24.5000
+                skipCheckRD = false;
+                confidenceDT = false;
               }
             }
           }
         }
-
-        break;
-
-      case 16:
-        if (diffVariance <= 1024.7241)
-        {
-          if (QP <= 24.5000)
-          {
-            skipCheckRD = true;
-            confidenceDT = false;
-          }
-          else
-          { // if QP > 24.5000
-            skipCheckRD = true;
-            confidenceDT = true;
-          }
-        }
         else
-        { // if diffVariance > 1024.7241
+        { // if QP > 29.5000
           if (height <= 1620.0000)
           {
-            skipCheckRD = false;
-            confidenceDT = true;
+            if (diffVariance <= 8152.2620)
+            {
+              if (QP <= 34.5000)
+              {
+                skipCheckRD = true;
+                confidenceDT = false;
+              }
+              else
+              { // if QP > 34.5000
+                skipCheckRD = true;
+                confidenceDT = false;
+              }
+            }
+            else
+            { // if diffVariance > 8152.2620
+              if (QP <= 34.5000)
+              {
+                skipCheckRD = false;
+                confidenceDT = false;
+              }
+              else
+              { // if QP > 34.5000
+                skipCheckRD = true;
+                confidenceDT = false;
+              }
+            }
           }
           else
           { // if height > 1620.0000
-            skipCheckRD = true;
-            confidenceDT = false;
+            if (QP <= 34.5000)
+            {
+              if (diffVariance <= 3179.7498)
+              {
+                skipCheckRD = true;
+                confidenceDT = true;
+              }
+              else
+              { // if diffVariance > 3179.7498
+                skipCheckRD = true;
+                confidenceDT = false;
+              }
+            }
+            else
+            { // if QP > 34.5000
+              if (diffVariance <= 4342.8918)
+              {
+                skipCheckRD = true;
+                confidenceDT = true;
+              }
+              else
+              { // if diffVariance > 4342.8918
+                skipCheckRD = true;
+                confidenceDT = true;
+              }
+            }
           }
         }
-
-        break;
-
-      default:
-        cout << "Invalid block size: " << partitioner.currArea().lwidth() << '\n';
       }
 
-      // if (!skipCheckRD && confidenceDT)
-      // {
+      break;
+
+    case 16:
+      if (diffVariance <= 1024.7241)
+      {
+        if (QP <= 24.5000)
+        {
+          skipCheckRD = true;
+          confidenceDT = false;
+        }
+        else
+        { // if QP > 24.5000
+          skipCheckRD = true;
+          confidenceDT = true;
+        }
+      }
+      else
+      { // if diffVariance > 1024.7241
+        if (height <= 1620.0000)
+        {
+          skipCheckRD = false;
+          confidenceDT = true;
+        }
+        else
+        { // if height > 1620.0000
+          skipCheckRD = true;
+          confidenceDT = false;
+        }
+      }
+
+      break;
+
+    default:
+      cout << "Invalid block size: " << partitioner.currArea().lwidth() << '\n';
     }
+
+    // if (!skipCheckRD && confidenceDT)
+    // {
+    // }
   }
 
   do //Felipe: laço que itera sobre todos os modos de predição possíveis para uma determinada CU
@@ -1320,7 +1336,7 @@ void EncCu::xCompressCU(CodingStructure *&tempCS, CodingStructure *&bestCS, Part
 
     if (currTestMode.type == ETM_INTER_ME)
     {
-      if (!skipCheckRD && !skipBlockSize)
+      if (!skipCheckRD)
       {
 
         if ((currTestMode.opts & ETO_IMV) != 0)
@@ -1347,7 +1363,7 @@ void EncCu::xCompressCU(CodingStructure *&tempCS, CodingStructure *&bestCS, Part
     }
     else if (currTestMode.type == ETM_HASH_INTER)
     {
-      if (!skipCheckRD && !skipBlockSize)
+      if (!skipCheckRD)
       {
         xCheckRDCostHashInter(tempCS, bestCS, partitioner, currTestMode);
       }
@@ -1358,7 +1374,7 @@ void EncCu::xCompressCU(CodingStructure *&tempCS, CodingStructure *&bestCS, Part
     }
     else if (currTestMode.type == ETM_AFFINE)
     {
-      if (!skipCheckRD && !skipBlockSize)
+      if (!skipCheckRD)
       {
         xCheckRDCostAffineMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
       }
@@ -1371,7 +1387,7 @@ void EncCu::xCompressCU(CodingStructure *&tempCS, CodingStructure *&bestCS, Part
 #if REUSE_CU_RESULTS
     else if (currTestMode.type == ETM_RECO_CACHED)
     {
-      if (!confidenceDT && !skipBlockSize)
+      if (!confidenceDT)
       {
         xReuseCachedResult(tempCS, bestCS, partitioner);
       }
@@ -1379,7 +1395,7 @@ void EncCu::xCompressCU(CodingStructure *&tempCS, CodingStructure *&bestCS, Part
 #endif
     else if (currTestMode.type == ETM_MERGE_SKIP)
     {
-      if (!confidenceDT && !skipBlockSize)
+      if (!confidenceDT)
       {
         xCheckRDCostMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
         CodingUnit *cu = bestCS->getCU(partitioner.chType);
@@ -1389,7 +1405,7 @@ void EncCu::xCompressCU(CodingStructure *&tempCS, CodingStructure *&bestCS, Part
     }
     else if (currTestMode.type == ETM_MERGE_GEO)
     {
-      if (!confidenceDT && !skipBlockSize)
+      if (!confidenceDT)
       {
         xCheckRDCostMergeGeo2Nx2N(tempCS, bestCS, partitioner, currTestMode);
       }
@@ -1435,104 +1451,104 @@ void EncCu::xCompressCU(CodingStructure *&tempCS, CodingStructure *&bestCS, Part
     }
     else if (currTestMode.type == ETM_PALETTE)
     {
-      if (!confidenceDT && !skipBlockSize)
+      if (!confidenceDT)
       {
         xCheckPLT(tempCS, bestCS, partitioner, currTestMode);
       }
     }
     else if (currTestMode.type == ETM_IBC)
     {
-      if (!confidenceDT && !skipBlockSize)
+      if (!confidenceDT)
       {
         xCheckRDCostIBCMode(tempCS, bestCS, partitioner, currTestMode);
       }
     }
     else if (currTestMode.type == ETM_IBC_MERGE)
     {
-      if (!confidenceDT && !skipBlockSize)
+      if (!confidenceDT)
       {
         xCheckRDCostIBCModeMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
       }
     }
     else if (isModeSplit(currTestMode))
     {
-      if (!confidenceDT && !skipBlockSize)
+      // if (!confidenceDT && !skipBlockSize)
+      // {
+
+      if (bestCS->cus.size() != 0)
       {
-
-        if (bestCS->cus.size() != 0)
+        splitmode = bestCS->cus[0]->splitSeries;
+      }
+      assert(partitioner.modeType == tempCS->modeType);
+      int signalModeConsVal = tempCS->signalModeCons(getPartSplit(currTestMode), partitioner, modeTypeParent);
+      int numRoundRdo = signalModeConsVal == LDT_MODE_TYPE_SIGNAL ? 2 : 1;
+      bool skipInterPass = false;
+      for (int i = 0; i < numRoundRdo; i++)
+      {
+        //change cons modes
+        if (signalModeConsVal == LDT_MODE_TYPE_SIGNAL)
         {
-          splitmode = bestCS->cus[0]->splitSeries;
+          CHECK(numRoundRdo != 2, "numRoundRdo shall be 2 - [LDT_MODE_TYPE_SIGNAL]");
+          tempCS->modeType = partitioner.modeType = (i == 0) ? MODE_TYPE_INTER : MODE_TYPE_INTRA;
         }
-        assert(partitioner.modeType == tempCS->modeType);
-        int signalModeConsVal = tempCS->signalModeCons(getPartSplit(currTestMode), partitioner, modeTypeParent);
-        int numRoundRdo = signalModeConsVal == LDT_MODE_TYPE_SIGNAL ? 2 : 1;
-        bool skipInterPass = false;
-        for (int i = 0; i < numRoundRdo; i++)
+        else if (signalModeConsVal == LDT_MODE_TYPE_INFER)
         {
-          //change cons modes
-          if (signalModeConsVal == LDT_MODE_TYPE_SIGNAL)
-          {
-            CHECK(numRoundRdo != 2, "numRoundRdo shall be 2 - [LDT_MODE_TYPE_SIGNAL]");
-            tempCS->modeType = partitioner.modeType = (i == 0) ? MODE_TYPE_INTER : MODE_TYPE_INTRA;
-          }
-          else if (signalModeConsVal == LDT_MODE_TYPE_INFER)
-          {
-            CHECK(numRoundRdo != 1, "numRoundRdo shall be 1 - [LDT_MODE_TYPE_INFER]");
-            tempCS->modeType = partitioner.modeType = MODE_TYPE_INTRA;
-          }
-          else if (signalModeConsVal == LDT_MODE_TYPE_INHERIT)
-          {
-            CHECK(numRoundRdo != 1, "numRoundRdo shall be 1 - [LDT_MODE_TYPE_INHERIT]");
-            tempCS->modeType = partitioner.modeType = modeTypeParent;
-          }
+          CHECK(numRoundRdo != 1, "numRoundRdo shall be 1 - [LDT_MODE_TYPE_INFER]");
+          tempCS->modeType = partitioner.modeType = MODE_TYPE_INTRA;
+        }
+        else if (signalModeConsVal == LDT_MODE_TYPE_INHERIT)
+        {
+          CHECK(numRoundRdo != 1, "numRoundRdo shall be 1 - [LDT_MODE_TYPE_INHERIT]");
+          tempCS->modeType = partitioner.modeType = modeTypeParent;
+        }
 
-          //for lite intra encoding fast algorithm, set the status to save inter coding info
-          if (modeTypeParent == MODE_TYPE_ALL && tempCS->modeType == MODE_TYPE_INTER)
+        //for lite intra encoding fast algorithm, set the status to save inter coding info
+        if (modeTypeParent == MODE_TYPE_ALL && tempCS->modeType == MODE_TYPE_INTER)
+        {
+          m_pcIntraSearch->setSaveCuCostInSCIPU(true);
+          m_pcIntraSearch->setNumCuInSCIPU(0);
+        }
+        else if (modeTypeParent == MODE_TYPE_ALL && tempCS->modeType != MODE_TYPE_INTER)
+        {
+          m_pcIntraSearch->setSaveCuCostInSCIPU(false);
+          if (tempCS->modeType == MODE_TYPE_ALL)
           {
-            m_pcIntraSearch->setSaveCuCostInSCIPU(true);
             m_pcIntraSearch->setNumCuInSCIPU(0);
           }
-          else if (modeTypeParent == MODE_TYPE_ALL && tempCS->modeType != MODE_TYPE_INTER)
-          {
-            m_pcIntraSearch->setSaveCuCostInSCIPU(false);
-            if (tempCS->modeType == MODE_TYPE_ALL)
-            {
-              m_pcIntraSearch->setNumCuInSCIPU(0);
-            }
-          }
+        }
 
-          xCheckModeSplit(tempCS, bestCS, partitioner, currTestMode, modeTypeParent, skipInterPass);
-          //recover cons modes
-          tempCS->modeType = partitioner.modeType = modeTypeParent;
-          tempCS->treeType = partitioner.treeType = treeTypeParent;
-          partitioner.chType = chTypeParent;
-          if (modeTypeParent == MODE_TYPE_ALL)
+        xCheckModeSplit(tempCS, bestCS, partitioner, currTestMode, modeTypeParent, skipInterPass);
+        //recover cons modes
+        tempCS->modeType = partitioner.modeType = modeTypeParent;
+        tempCS->treeType = partitioner.treeType = treeTypeParent;
+        partitioner.chType = chTypeParent;
+        if (modeTypeParent == MODE_TYPE_ALL)
+        {
+          m_pcIntraSearch->setSaveCuCostInSCIPU(false);
+          if (numRoundRdo == 2 && tempCS->modeType == MODE_TYPE_INTRA)
           {
-            m_pcIntraSearch->setSaveCuCostInSCIPU(false);
-            if (numRoundRdo == 2 && tempCS->modeType == MODE_TYPE_INTRA)
-            {
-              m_pcIntraSearch->initCuAreaCostInSCIPU();
-            }
-          }
-          if (skipInterPass)
-          {
-            break;
+            m_pcIntraSearch->initCuAreaCostInSCIPU();
           }
         }
-        if (splitmode != bestCS->cus[0]->splitSeries)
+        if (skipInterPass)
         {
-          splitmode = bestCS->cus[0]->splitSeries;
-          const CodingUnit &cu = *bestCS->cus.front();
-          cu.cs->prevPLT = bestCS->prevPLT;
-          for (int i = compBegin; i < (compBegin + numComp); i++)
-          {
-            ComponentID comID = jointPLT ? (ComponentID)compBegin : ((i > 0) ? COMPONENT_Cb : COMPONENT_Y);
-            bestLastPLTSize[comID] = bestCS->cus[0]->cs->prevPLT.curPLTSize[comID];
-            memcpy(bestLastPLT[i], bestCS->cus[0]->cs->prevPLT.curPLT[i], bestCS->cus[0]->cs->prevPLT.curPLTSize[comID] * sizeof(Pel));
-          }
+          break;
+        }
+      }
+      if (splitmode != bestCS->cus[0]->splitSeries)
+      {
+        splitmode = bestCS->cus[0]->splitSeries;
+        const CodingUnit &cu = *bestCS->cus.front();
+        cu.cs->prevPLT = bestCS->prevPLT;
+        for (int i = compBegin; i < (compBegin + numComp); i++)
+        {
+          ComponentID comID = jointPLT ? (ComponentID)compBegin : ((i > 0) ? COMPONENT_Cb : COMPONENT_Y);
+          bestLastPLTSize[comID] = bestCS->cus[0]->cs->prevPLT.curPLTSize[comID];
+          memcpy(bestLastPLT[i], bestCS->cus[0]->cs->prevPLT.curPLT[i], bestCS->cus[0]->cs->prevPLT.curPLTSize[comID] * sizeof(Pel));
         }
       }
     }
+    // }
     else
     {
       THROW("Don't know how to handle mode: type = " << currTestMode.type << ", options = " << currTestMode.opts);
@@ -1541,15 +1557,15 @@ void EncCu::xCompressCU(CodingStructure *&tempCS, CodingStructure *&bestCS, Part
   } while (m_modeCtrl->nextMode(*tempCS, partitioner));
 
   // Arthur: Case block will not split, and there is confidence on the result
-  if (!skipCheckRD && confidenceDT)
-  {
-    skipBlockSize = true;
-    skipBlockXLimit = endx;
-    skipBlockYLimit = endy;
-    skipBlockWidth = blockWidth;
-    skipBlockHeight = blockHeight;
-    // cout << "Skip block: True\n";
-  }
+  // if (!skipCheckRD && confidenceDT)
+  // {
+  //   skipBlockSize = true;
+  //   skipBlockXLimit = endx;
+  //   skipBlockYLimit = endy;
+  //   skipBlockWidth = blockWidth;
+  //   skipBlockHeight = blockHeight;
+  //   // cout << "Skip block: True\n";
+  // }
 
 //////////////////////////////////////////////////////////////////////////
 // Finishing CU
@@ -1980,7 +1996,7 @@ void EncCu::xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, 
 
       if (bestSubCS->cost == MAX_DOUBLE)
       {
-        CHECK(split == CU_QUAD_SPLIT, "Split decision reusing cannot skip quad split");
+        // CHECK(split == CU_QUAD_SPLIT, "Split decision reusing cannot skip quad split");
         tempCS->cost = MAX_DOUBLE;
         tempCS->costDbOffset = 0;
         tempCS->useDbCost = m_pcEncCfg->getUseEncDbOpt();

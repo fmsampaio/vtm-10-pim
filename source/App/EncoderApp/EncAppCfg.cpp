@@ -67,11 +67,11 @@ double INTER_DURATION = 0;
 // double threshold_64;
 // double threshold_32;
 // double threshold_16;
-bool skipBlockSize = false;
-int skipBlockXLimit = 0;
-int skipBlockYLimit = 0;
-int skipBlockWidth = 0;
-int skipBlockHeight = 0;
+// bool skipBlockSize = false;
+// int skipBlockXLimit = 0;
+// int skipBlockYLimit = 0;
+// int skipBlockWidth = 0;
+// int skipBlockHeight = 0;
 
 enum ExtendedProfileName // this is used for determining profile strings, where multiple profiles map to a single
                          // profile idc with various constraint flag combinations
